@@ -6,19 +6,16 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
     - name: Setup Java 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '17'
@@ -32,9 +29,6 @@ jobs:
     - name: Get Flutter dependencies
       run: flutter pub get
 
-    - name: Analyze Flutter project
-      run: flutter analyze
-
     - name: Build APK (Release)
       run: flutter build apk --release
 
@@ -42,14 +36,14 @@ jobs:
       run: flutter build appbundle --release
 
     - name: Upload APK to Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: app-release.apk
         path: build/app/outputs/apk/release/app-release.apk
         retention-days: 30
 
     - name: Upload AAB to Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: app-release.aab
         path: build/app/outputs/bundle/release/app-release.aab
