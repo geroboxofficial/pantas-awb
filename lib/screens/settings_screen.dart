@@ -269,8 +269,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     return Card(
       color: Colors.white.withOpacity(0.05),
-      border: Border.all(
-        color: const Color(0xFF00D9FF).withOpacity(0.2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: const Color(0xFF00D9FF).withOpacity(0.2),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
