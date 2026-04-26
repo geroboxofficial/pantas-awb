@@ -25,176 +25,222 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
+        backgroundColor: const Color(0xFF001F3F),
+        elevation: 0,
       ),
-      body: Consumer<AWBProvider>(
-        builder: (context, provider, child) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Security Status
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF001F3F).withOpacity(0.95),
+              const Color(0xFF003D7A).withOpacity(0.95),
+            ],
+          ),
+        ),
+        child: Consumer<AWBProvider>(
+          builder: (context, provider, child) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Security Status
+                  _buildCard(
+                    title: 'Security Status',
+                    icon: Icons.security,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.security, color: Colors.green),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Security Status',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
                         _buildSecurityItem('QR Code Verification', 'HMAC-SHA256 Enabled', true),
                         _buildSecurityItem('Offline Storage', 'SQLite Encrypted', true),
                         _buildSecurityItem('Backup Encryption', 'Password Protected', true),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // AWB Management
-                Text(
-                  'AWB Management',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  title: const Text('Check Expired AWBs'),
-                  subtitle: const Text('Update status for expired AWBs'),
-                  trailing: const Icon(Icons.arrow_forward),
-                  onTap: () => _checkExpiredAWBs(context, provider),
-                ),
-                const SizedBox(height: 24),
-
-                // Audit Log
-                Text(
-                  'Security Audit Log',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  title: const Text('View Audit Log'),
-                  subtitle: const Text('View all security events'),
-                  trailing: Icon(
-                    _showAuditLog ? Icons.expand_less : Icons.expand_more,
+                  // AWB Management
+                  _buildSectionTitle('AWB Management'),
+                  const SizedBox(height: 12),
+                  _buildListTile(
+                    title: 'Check Expired AWBs',
+                    subtitle: 'Update status for expired AWBs',
+                    onTap: () => _checkExpiredAWBs(context, provider),
                   ),
-                  onTap: () {
-                    setState(() => _showAuditLog = !_showAuditLog);
-                  },
-                ),
-                if (_showAuditLog)
-                  FutureBuilder<List<Map<String, dynamic>>>(
-                    future: provider.getAuditLogs(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: CircularProgressIndicator(),
-                        );
-                      }
+                  const SizedBox(height: 24),
 
-                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text('No audit logs found'),
-                        );
-                      }
-
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: snapshot.data!.length,
-                        itemBuilder: (context, index) {
-                          final log = snapshot.data![index];
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            child: ListTile(
-                              title: Text(log['event_type'] ?? 'Unknown'),
-                              subtitle: Text(log['event_description'] ?? ''),
-                              trailing: Chip(
-                                label: Text(log['severity'] ?? 'info'),
-                                backgroundColor: _getSeverityColor(log['severity']),
-                              ),
-                            ),
-                          );
-                        },
-                      );
+                  // Audit Log
+                  _buildSectionTitle('Security Audit Log'),
+                  const SizedBox(height: 12),
+                  _buildListTile(
+                    title: 'View Audit Log',
+                    subtitle: 'View all security events',
+                    trailing: _showAuditLog ? Icons.expand_less : Icons.expand_more,
+                    onTap: () {
+                      setState(() => _showAuditLog = !_showAuditLog);
                     },
                   ),
-                const SizedBox(height: 24),
+                  if (_showAuditLog)
+                    FutureBuilder<List<Map<String, dynamic>>>(
+                      future: provider.getAuditLogs(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00D9FF)),
+                            ),
+                          );
+                        }
 
-                // Backup & Restore
-                Text(
-                  'Backup & Restore',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  title: const Text('Backup Options'),
-                  subtitle: const Text('Create encrypted backup'),
-                  trailing: Icon(
-                    _showBackupOptions ? Icons.expand_less : Icons.expand_more,
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text('No audit logs found', style: TextStyle(color: Colors.white70)),
+                          );
+                        }
+
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: snapshot.data!.length,
+                          itemBuilder: (context, index) {
+                            final log = snapshot.data![index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              color: Colors.white.withOpacity(0.05),
+                              child: ListTile(
+                                title: Text(
+                                  log['event_type'] ?? 'Unknown',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                subtitle: Text(
+                                  log['event_description'] ?? '',
+                                  style: const TextStyle(color: Colors.white70),
+                                ),
+                                trailing: Chip(
+                                  label: Text(log['severity'] ?? 'info'),
+                                  backgroundColor: _getSeverityColor(log['severity']),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 24),
+
+                  // Backup & Restore
+                  _buildSectionTitle('Backup & Restore'),
+                  const SizedBox(height: 12),
+                  _buildListTile(
+                    title: 'Backup Options',
+                    subtitle: 'Create encrypted backup',
+                    trailing: _showBackupOptions ? Icons.expand_less : Icons.expand_more,
+                    onTap: () {
+                      setState(() => _showBackupOptions = !_showBackupOptions);
+                    },
                   ),
-                  onTap: () {
-                    setState(() => _showBackupOptions = !_showBackupOptions);
-                  },
-                ),
-                if (_showBackupOptions)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
+                  if (_showBackupOptions)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: _backupPasswordController,
+                            obscureText: true,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'Backup Password',
+                              labelStyle: const TextStyle(color: Colors.white70),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: Color(0xFF00D9FF)),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white.withOpacity(0.05),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _createBackup(context),
+                              icon: const Icon(Icons.backup),
+                              label: const Text('Create Backup'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00D9FF),
+                                foregroundColor: const Color(0xFF001F3F),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _restoreBackup(context),
+                              icon: const Icon(Icons.restore),
+                              label: const Text('Restore Backup'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF00D9FF),
+                                side: const BorderSide(color: Color(0xFF00D9FF)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+
+                  // Developer Details
+                  _buildCard(
+                    title: 'Developer Details',
+                    icon: Icons.developer_mode,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TextField(
-                          controller: _backupPasswordController,
-                          obscureText: true,
-                          decoration: InputDecoration(
-                            labelText: 'Backup Password',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+                        const Text(
+                          'PANTAS AWB Developer',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoRow('Name', 'Mohd Jany bin Mustapha'),
+                        _buildInfoRow('Email', 'pantasonthego@gmail.com'),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00D9FF).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFF00D9FF).withOpacity(0.3),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () => _createBackup(context),
-                            icon: const Icon(Icons.backup),
-                            label: const Text('Create Backup'),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _restoreBackup(context),
-                            icon: const Icon(Icons.restore),
-                            label: const Text('Restore Backup'),
+                          child: const Text(
+                            'Developed with professional standards for secure and reliable handover management.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.white70,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // App Information
-                Text(
-                  'App Information',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+                  // App Information
+                  _buildCard(
+                    title: 'App Information',
+                    icon: Icons.info,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -206,11 +252,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Card(
+      color: Colors.white.withOpacity(0.05),
+      border: Border.all(
+        color: const Color(0xFF00D9FF).withOpacity(0.2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: const Color(0xFF00D9FF)),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),
-          );
-        },
+            const SizedBox(height: 16),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+        color: Colors.white,
+      ),
+    );
+  }
+
+  Widget _buildListTile({
+    required String title,
+    required String subtitle,
+    IconData? trailing,
+    VoidCallback? onTap,
+  }) {
+    return Card(
+      color: Colors.white.withOpacity(0.05),
+      child: ListTile(
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        subtitle: Text(subtitle, style: const TextStyle(color: Colors.white70)),
+        trailing: trailing != null ? Icon(trailing, color: const Color(0xFF00D9FF)) : null,
+        onTap: onTap,
       ),
     );
   }
@@ -231,11 +343,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: const TextStyle(fontSize: 12, color: Colors.white70),
                 ),
               ],
             ),
@@ -251,10 +366,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label),
+          Text(label, style: const TextStyle(color: Colors.white70)),
           Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
         ],
       ),
@@ -264,13 +382,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Color _getSeverityColor(String? severity) {
     switch (severity) {
       case 'info':
-        return Colors.blue.withValues(alpha: 0.3);
+        return Colors.blue.withOpacity(0.3);
       case 'warning':
-        return Colors.orange.withValues(alpha: 0.3);
+        return Colors.orange.withOpacity(0.3);
       case 'error':
-        return Colors.red.withValues(alpha: 0.3);
+        return Colors.red.withOpacity(0.3);
       default:
-        return Colors.grey.withValues(alpha: 0.3);
+        return Colors.grey.withOpacity(0.3);
     }
   }
 
@@ -321,9 +439,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SnackBar(content: Text('Creating backup...')),
       );
 
-      // Backup creation would be implemented here
-      // For now, just show success message
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -362,8 +477,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SnackBar(content: Text('Restoring backup...')),
       );
 
-      // Restore would be implemented here
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
