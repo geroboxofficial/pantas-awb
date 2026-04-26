@@ -53,20 +53,22 @@ class DatabaseService {
     ''');
 
     // User Profiles Table
-    await db.execute('''
-      CREATE TABLE user_profiles (
+    await db.execute('''\n      CREATE TABLE user_profiles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         profile_name TEXT NOT NULL,
         profile_type TEXT,
         department TEXT,
         phone TEXT,
+        email TEXT,
         address TEXT,
+        qr_code TEXT UNIQUE,
+        vcard_data TEXT,
+        user_id TEXT UNIQUE,
         is_active INTEGER DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
     ''');
-
     // Security Audit Log Table
     await db.execute('''
       CREATE TABLE security_audit_logs (
@@ -280,6 +282,20 @@ class DatabaseService {
     );
   }
 
+  // Handover Timeline Operations
+  Future<Map<String, dynamic>?> getHandoverTimeline(String airwayId) async {
+    final db = await database;
+    final maps = await db.query(
+      'handover_records',
+      where: 'airway_id = ?',
+      whereArgs: [airwayId],
+    );
+    if (maps.isNotEmpty) {
+      return maps.first;
+    }
+    return null;
+  }
+
   // Handover Operations
   Future<void> recordHandoverStep(String airwayId, int stepNumber, DateTime timestamp) async {
     final db = await database;
@@ -355,6 +371,12 @@ class DatabaseService {
       'completed': completed,
       'expired': total - active - completed,
     };
+  }
+
+  // Get all handover timelines
+  Future<List<Map<String, dynamic>>> getAllHandoverTimelines() async {
+    final db = await database;
+    return await db.query('handover_records', orderBy: 'created_at DESC');
   }
 
   // Close database

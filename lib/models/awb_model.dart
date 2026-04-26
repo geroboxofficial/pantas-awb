@@ -92,6 +92,9 @@ class UserProfile {
   final String phone;
   final String email;
   final String address;
+  final String? qrCode; // Unique QR Code for user
+  final String? vCardData; // vCard format data
+  final String? userId; // Unique user identifier
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -103,6 +106,9 @@ class UserProfile {
     required this.phone,
     required this.email,
     required this.address,
+    this.qrCode,
+    this.vCardData,
+    this.userId,
     this.isActive = true,
     required this.createdAt,
     required this.updatedAt,
@@ -114,7 +120,11 @@ class UserProfile {
       'profile_name': name,
       'department': department,
       'phone': phone,
+      'email': email,
       'address': address,
+      'qr_code': qrCode,
+      'vcard_data': vCardData,
+      'user_id': userId,
       'is_active': isActive ? 1 : 0,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -129,6 +139,9 @@ class UserProfile {
       phone: map['phone'] as String,
       email: map['email'] as String? ?? '',
       address: map['address'] as String,
+      qrCode: map['qr_code'] as String?,
+      vCardData: map['vcard_data'] as String?,
+      userId: map['user_id'] as String?,
       isActive: (map['is_active'] as int? ?? 1) == 1,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),

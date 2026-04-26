@@ -342,13 +342,12 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
   }
 
   void _showAWBDetails(BuildContext context, dynamic awb) {
-    // Reusing the same detail view logic as HomeScreen or navigating to a dedicated detail screen
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: MediaQuery.of(context).size.height * 0.85,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.background,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
@@ -368,15 +367,120 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
                   _buildDetailItem('Sender', awb.senderName),
                   _buildDetailItem('Recipient', awb.recipientName),
                   _buildDetailItem('Type', awb.type),
-                  _buildDetailItem('Created', awb.createdAt.toString()),
-                  _buildDetailItem('Expires', awb.expiresAt.toString()),
+                  _buildDetailItem('Reference', awb.reference),
+                  _buildDetailItem('Created', _formatDateTime(awb.createdAt)),
+                  _buildDetailItem('Expires', _formatDateTime(awb.expiresAt)),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'TRANSACTION TIMELINE',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1, color: Color(0xFF00D9FF)),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTimelineView(context, awb),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
             SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('CLOSE'))),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTimelineView(BuildContext context, dynamic awb) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: context.read<AWBProvider>().getHandoverTimeline(awb.airwayId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final timeline = snapshot.data;
+        final timelineEvents = <String, DateTime?>{
+          'Created': awb.createdAt,
+          'Scanned': timeline != null ? _parseDateTime(timeline['timestamp2']) : null,
+          'Received': timeline != null ? _parseDateTime(timeline['timestamp3']) : null,
+          'Completed': timeline != null ? _parseDateTime(timeline['timestamp4']) : null,
+        };
+
+        return Column(
+          children: List.generate(timelineEvents.length, (index) {
+            final entry = timelineEvents.entries.toList()[index];
+            final eventName = entry.key;
+            final eventTime = entry.value;
+            final isCompleted = eventTime != null;
+            final isLast = index == timelineEvents.length - 1;
+
+            return Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Timeline dot and line
+                    Column(
+                      children: [
+                        Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isCompleted ? Colors.greenAccent : Colors.white24,
+                            border: Border.all(
+                              color: isCompleted ? Colors.greenAccent : Colors.white10,
+                              width: 2,
+                            ),
+                          ),
+                          child: isCompleted
+                              ? const Icon(Icons.check_rounded, size: 12, color: Colors.black)
+                              : null,
+                        ),
+                        if (!isLast)
+                          Container(
+                            width: 2,
+                            height: 40,
+                            color: isCompleted ? Colors.greenAccent : Colors.white10,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 16),
+                    // Event details
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              eventName,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: isCompleted ? Colors.white : Colors.white54,
+                              ),
+                            ),
+                            if (eventTime != null)
+                              Text(
+                                _formatDateTime(eventTime),
+                                style: const TextStyle(fontSize: 11, color: Colors.white38),
+                              )
+                            else
+                              Text(
+                                'Pending',
+                                style: TextStyle(fontSize: 11, color: Colors.white38, fontStyle: FontStyle.italic),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (!isLast) const SizedBox(height: 8),
+              ],
+            );
+          }),
+        );
+      },
     );
   }
 
@@ -392,5 +496,18 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
         ],
       ),
     );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return DateFormat('dd/MM/yyyy HH:mm:ss').format(dateTime);
+  }
+
+  DateTime? _parseDateTime(String? dateTimeStr) {
+    if (dateTimeStr == null || dateTimeStr.isEmpty) return null;
+    try {
+      return DateTime.parse(dateTimeStr);
+    } catch (e) {
+      return null;
+    }
   }
 }

@@ -54,31 +54,91 @@ class AWBProvider extends ChangeNotifier {
     }
   }
 
-  // Create Profile
+  // Create or Update Profile with QR Code and vCard
   Future<bool> createProfile(UserProfile profile) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      await _dbService.insertProfile(profile);
-      _userProfile = profile;
+      // Generate unique user ID if not exists
+      final userId = profile.userId ?? QRSecurityService.generateAWBId();
+      final vCardData = _generateVCard(profile, userId);
       
-      await _dbService.logSecurityEvent(
-        'PROFILE_CREATED',
-        'User profile created for ${profile.name}',
-        'info',
+      // Create QR data for vCard
+      final qrPayload = {
+        'userId': userId,
+        'name': profile.name,
+        'department': profile.department,
+        'phone': profile.phone,
+        'email': profile.email,
+        'address': profile.address,
+        'vCard': vCardData,
+      };
+      
+      final secureQR = QRSecurityService.createSecureQRData(qrPayload);
+      
+      final updatedProfile = UserProfile(
+        id: profile.id,
+        name: profile.name,
+        department: profile.department,
+        phone: profile.phone,
+        email: profile.email,
+        address: profile.address,
+        qrCode: secureQR['qrContent'],
+        vCardData: vCardData,
+        userId: userId,
+        isActive: profile.isActive,
+        createdAt: profile.createdAt,
+        updatedAt: DateTime.now(),
       );
 
+      if (profile.id == null) {
+        await _dbService.insertProfile(updatedProfile);
+        await _dbService.logSecurityEvent(
+          'PROFILE_CREATED',
+          'User profile created for ${profile.name} (ID: $userId)',
+          'info',
+        );
+      } else {
+        await _dbService.updateProfile(updatedProfile);
+        await _dbService.logSecurityEvent(
+          'PROFILE_UPDATED',
+          'User profile updated for ${profile.name}',
+          'info',
+        );
+      }
+      
+      _userProfile = updatedProfile;
       _error = null;
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Failed to create profile: $e';
+      _error = 'Failed to create/update profile: $e';
       _isLoading = false;
       notifyListeners();
       return false;
     }
+  }
+
+  // Generate vCard format data
+  String _generateVCard(UserProfile profile, String userId) {
+    final now = DateTime.now();
+    final nameParts = profile.name.split(' ');
+    final lastName = nameParts.isNotEmpty ? nameParts.last : '';
+    final firstName = nameParts.length > 1 ? nameParts.sublist(0, nameParts.length - 1).join(' ') : '';
+    
+    return '''BEGIN:VCARD
+VERSION:3.0
+FN:${profile.name}
+N:$lastName;$firstName;;;
+ORG:${profile.department}
+TEL:${profile.phone}
+EMAIL:${profile.email}
+ADR:;;${profile.address}
+UID:$userId
+DTSTAMP:${now.toIso8601String()}
+END:VCARD''';
   }
 
   // Load all AWBs
@@ -114,11 +174,13 @@ class AWBProvider extends ChangeNotifier {
       final now = DateTime.now();
       final expiresAt = now.add(const Duration(days: 7));
 
-      // Create QR data
+      // Create QR data with sender's user ID if available
       final qrData = {
         'airwayId': airwayId,
         'type': type,
         'senderName': senderName,
+        'senderDepartment': senderDepartment,
+        'senderUserId': _userProfile?.userId,
         'recipientName': recipientName,
         'createdAt': now.toIso8601String(),
       };
@@ -143,9 +205,13 @@ class AWBProvider extends ChangeNotifier {
       );
 
       await _dbService.insertAWB(awb);
+      
+      // Record initial handover step (created)
+      await _dbService.recordHandoverStep(airwayId, 1, now);
+      
       await _dbService.logSecurityEvent(
         'AWB_CREATED',
-        'AWB $airwayId created',
+        'AWB $airwayId created by ${senderName}',
         'info',
       );
 
@@ -227,6 +293,15 @@ class AWBProvider extends ChangeNotifier {
         );
 
         await _dbService.updateAWB(updatedAWB);
+        
+        // Record handover step based on status
+        int stepNumber = 1;
+        if (newStatus == 'scanned') stepNumber = 2;
+        else if (newStatus == 'completed') stepNumber = 3;
+        else if (newStatus == 'expired') stepNumber = 4;
+        
+        await _dbService.recordHandoverStep(airwayId, stepNumber, DateTime.now());
+        
         await _dbService.logSecurityEvent(
           'AWB_STATUS_UPDATED',
           'AWB $airwayId status changed to $newStatus',
@@ -329,6 +404,33 @@ class AWBProvider extends ChangeNotifier {
       _error = 'Failed to get audit logs: $e';
       notifyListeners();
       return [];
+    }
+  }
+
+  // Get handover timeline for AWB
+  Future<Map<String, dynamic>?> getHandoverTimeline(String airwayId) async {
+    try {
+      return await _dbService.getHandoverTimeline(airwayId);
+    } catch (e) {
+      _error = 'Failed to get handover timeline: $e';
+      notifyListeners();
+      return null;
+    }
+  }
+
+  // Record handover step
+  Future<void> recordHandoverStep(String airwayId, int stepNumber) async {
+    try {
+      await _dbService.recordHandoverStep(airwayId, stepNumber, DateTime.now());
+      await _dbService.logSecurityEvent(
+        'HANDOVER_STEP_$stepNumber',
+        'Handover step $stepNumber recorded for AWB $airwayId',
+        'info',
+      );
+      notifyListeners();
+    } catch (e) {
+      _error = 'Failed to record handover step: $e';
+      notifyListeners();
     }
   }
 }

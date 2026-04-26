@@ -14,6 +14,9 @@ class ScanQRScreen extends StatefulWidget {
 class _ScanQRScreenState extends State<ScanQRScreen> {
   MobileScannerController cameraController = MobileScannerController();
   bool _isProcessing = false;
+  String? _senderUserId; // Store sender user ID from first scan
+  String? _awbId; // Store AWB ID from first scan
+  int _scanStep = 1; // 1: AWB QR, 2: Sender Profile QR
 
   @override
   void dispose() {
@@ -28,7 +31,7 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('SECURE SCANNER'),
+        title: Text(_scanStep == 1 ? 'SCAN AWB QR CODE' : 'SCAN SENDER PROFILE QR'),
         backgroundColor: Colors.black,
         actions: [
           IconButton(
@@ -69,6 +72,20 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Spacer(),
+                  // Step indicator
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Text(
+                      'STEP $_scanStep OF 2',
+                      style: const TextStyle(color: Color(0xFF00D9FF), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   Container(
                     width: 240,
                     height: 240,
@@ -100,16 +117,16 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.white10),
                     ),
-                    child: const Text(
-                      'ALIGN QR CODE WITHIN FRAME',
-                      style: TextStyle(color: Color(0xFF00D9FF), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                    child: Text(
+                      _scanStep == 1 ? 'SCAN AWB QR CODE' : 'SCAN SENDER PROFILE QR',
+                      style: const TextStyle(color: Color(0xFF00D9FF), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5),
                     ),
                   ),
                   const Spacer(),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 40),
                     child: Text(
-                      'ENCRYPTED HANDOVER PROTOCOL v1.0',
+                      'ENCRYPTED HANDOVER PROTOCOL v2.0',
                       style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 8, letterSpacing: 2),
                     ),
                   ),
@@ -169,22 +186,57 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
       }
 
       final data = result['data'] as Map<String, dynamic>;
-      final airwayId = data['airwayId'] as String?;
-      final provider = context.read<AWBProvider>();
       
-      // Look for AWB in provider
-      final awb = provider.awbs.where((a) => a.airwayId == airwayId).firstOrNull;
-      
-      if (awb == null) {
-        _showStatusSheet(false, 'Consignment record not found in local database');
-        return;
-      }
+      if (_scanStep == 1) {
+        // First scan: AWB QR Code
+        final airwayId = data['airwayId'] as String?;
+        final provider = context.read<AWBProvider>();
+        
+        // Look for AWB in provider
+        final awb = provider.awbs.where((a) => a.airwayId == airwayId).firstOrNull;
+        
+        if (awb == null) {
+          _showStatusSheet(false, 'Consignment record not found in local database');
+          return;
+        }
 
-      _showHandoverSheet(awb);
+        setState(() {
+          _awbId = airwayId;
+          _scanStep = 2;
+          _isProcessing = false;
+        });
+
+        _showStatusSheet(true, 'AWB verified. Now scan sender profile QR code.');
+      } else if (_scanStep == 2) {
+        // Second scan: Sender Profile QR Code
+        final senderUserId = data['userId'] as String?;
+        final provider = context.read<AWBProvider>();
+        
+        if (senderUserId == null) {
+          _showStatusSheet(false, 'Invalid sender profile QR code');
+          return;
+        }
+
+        // Verify sender matches AWB sender
+        final awb = provider.awbs.where((a) => a.airwayId == _awbId).firstOrNull;
+        if (awb == null) {
+          _showStatusSheet(false, 'AWB record lost. Please restart scan.');
+          return;
+        }
+
+        setState(() {
+          _senderUserId = senderUserId;
+          _isProcessing = false;
+        });
+
+        _showHandoverSheet(awb, senderUserId);
+      }
     } catch (e) {
       _showStatusSheet(false, 'System Error: $e');
     } finally {
-      setState(() => _isProcessing = false);
+      if (_scanStep == 1) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
@@ -207,14 +259,29 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
             const SizedBox(height: 8),
             Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54)),
             const SizedBox(height: 32),
-            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('DISMISS'))),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (!success && _scanStep == 2) {
+                    setState(() {
+                      _scanStep = 1;
+                      _awbId = null;
+                      _senderUserId = null;
+                    });
+                  }
+                },
+                child: const Text('DISMISS'),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  void _showHandoverSheet(dynamic awb) {
+  void _showHandoverSheet(dynamic awb, String senderUserId) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -229,19 +296,33 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('CONSIGNMENT VERIFIED', style: TextStyle(color: Color(0xFF00D9FF), fontWeight: FontWeight.bold, letterSpacing: 1)),
+            const Text('SECURE HANDOVER VERIFIED', style: TextStyle(color: Color(0xFF00D9FF), fontWeight: FontWeight.bold, letterSpacing: 1)),
             const SizedBox(height: 8),
             Text(awb.airwayId, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
             const Divider(height: 40, color: Colors.white10),
             _buildInfoRow('Sender', awb.senderName),
+            _buildInfoRow('Sender ID', senderUserId),
             _buildInfoRow('Recipient', awb.recipientName),
             _buildInfoRow('Current Status', awb.status.toUpperCase()),
+            _buildInfoRow('Created', _formatDateTime(awb.createdAt)),
             const SizedBox(height: 32),
-            const Text('CONFIRM HANDOVER TRANSACTION?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            const Text('CONFIRM SECURE HANDOVER TRANSACTION?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             Row(
               children: [
-                Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL'))),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _scanStep = 1;
+                        _awbId = null;
+                        _senderUserId = null;
+                      });
+                    },
+                    child: const Text('CANCEL'),
+                  ),
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
@@ -264,8 +345,14 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
   Future<void> _completeHandover(dynamic awb) async {
     final provider = context.read<AWBProvider>();
     final success = await provider.updateAWBStatus(awb.airwayId, 'completed');
+    
     if (mounted) {
-      _showStatusSheet(success, success ? 'Handover transaction completed and logged.' : 'Failed to update transaction status.');
+      setState(() {
+        _scanStep = 1;
+        _awbId = null;
+        _senderUserId = null;
+      });
+      _showStatusSheet(success, success ? 'Secure handover transaction completed and logged.' : 'Failed to update transaction status.');
     }
   }
 
@@ -276,9 +363,20 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }

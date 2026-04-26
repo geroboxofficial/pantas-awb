@@ -17,6 +17,8 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
   late TextEditingController _addressController;
+  late TextEditingController _userIdController;
+  bool _isEditMode = false;
 
   @override
   void initState() {
@@ -27,6 +29,8 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
     _phoneController = TextEditingController(text: profile?.phone);
     _emailController = TextEditingController(text: profile?.email);
     _addressController = TextEditingController(text: profile?.address);
+    _userIdController = TextEditingController(text: profile?.userId);
+    _isEditMode = profile != null;
   }
 
   @override
@@ -36,18 +40,21 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _addressController.dispose();
+    _userIdController.dispose();
     super.dispose();
   }
 
   Future<void> _createProfile() async {
     if (_formKey.currentState!.validate()) {
       final profile = UserProfile(
+        id: _isEditMode ? context.read<AWBProvider>().userProfile?.id : null,
         name: _nameController.text,
         department: _departmentController.text,
         phone: _phoneController.text,
         email: _emailController.text,
         address: _addressController.text,
-        createdAt: DateTime.now(),
+        userId: _userIdController.text.isNotEmpty ? _userIdController.text : null,
+        createdAt: context.read<AWBProvider>().userProfile?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
@@ -55,8 +62,8 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
+          SnackBar(
+            content: Text(_isEditMode ? 'Profile updated successfully!' : 'Profile created successfully!'),
             backgroundColor: Colors.greenAccent,
           ),
         );
@@ -71,7 +78,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('USER PROFILE'),
+        title: Text(_isEditMode ? 'EDIT PROFILE' : 'CREATE PROFILE'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -93,18 +100,40 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
               ),
               const SizedBox(height: 32),
               
+              // Info box about locked fields
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  border: Border.all(color: Colors.blue, width: 1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Only Department can be edited. Other fields are locked.',
+                        style: TextStyle(color: Colors.blue.shade700, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              
               _buildSectionHeader(context, 'PERSONAL DETAILS', Icons.badge_outlined),
               const SizedBox(height: 16),
-              _buildTextField(
+              _buildReadOnlyField(
                 controller: _nameController,
                 label: 'Full Name',
                 icon: Icons.person_outline_rounded,
-                validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               _buildTextField(
                 controller: _departmentController,
-                label: 'Department',
+                label: 'Department (Editable)',
                 icon: Icons.business_outlined,
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
@@ -112,38 +141,58 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
 
               _buildSectionHeader(context, 'CONTACT INFORMATION', Icons.contact_mail_outlined),
               const SizedBox(height: 16),
-              _buildTextField(
+              _buildReadOnlyField(
                 controller: _phoneController,
                 label: 'Phone Number',
                 icon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-                validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              _buildTextField(
+              _buildReadOnlyField(
                 controller: _emailController,
                 label: 'Email Address',
                 icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-                validator: (v) {
-                  if (v!.isEmpty) return 'Required';
-                  if (!v.contains('@')) return 'Invalid email';
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
-              _buildTextField(
+              _buildReadOnlyField(
                 controller: _addressController,
                 label: 'Office/Home Address',
                 icon: Icons.location_on_outlined,
-                maxLines: 3,
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 32),
+
+              _buildSectionHeader(context, 'SECURITY INFORMATION', Icons.security_outlined),
+              const SizedBox(height: 16),
+              _buildReadOnlyField(
+                controller: _userIdController,
+                label: 'Unique User ID (for QR Code)',
+                icon: Icons.qr_code_outlined,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  border: Border.all(color: Colors.green, width: 1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'QR Code and vCard generated automatically',
+                        style: TextStyle(color: Colors.green.shade700, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 48),
 
               ElevatedButton(
                 onPressed: _createProfile,
-                child: const Text('SAVE PROFILE'),
+                child: Text(_isEditMode ? 'UPDATE PROFILE' : 'CREATE PROFILE'),
               ),
               const SizedBox(height: 40),
             ],
@@ -188,6 +237,25 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
         labelText: label,
         prefixIcon: Icon(icon, size: 20),
         alignLabelWithHint: maxLines > 1,
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+  }) {
+    return TextFormField(
+      controller: controller,
+      readOnly: true,
+      enabled: false,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, size: 20),
+        suffixIcon: Icon(Icons.lock_outline, size: 16, color: Colors.grey),
+        filled: true,
+        fillColor: Colors.grey.withOpacity(0.1),
       ),
     );
   }
