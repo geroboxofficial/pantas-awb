@@ -36,14 +36,14 @@ jobs:
       run: flutter build appbundle --release
 
     - name: Upload APK to Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: app-release.apk
         path: build/app/outputs/apk/release/app-release.apk
         retention-days: 30
 
     - name: Upload AAB to Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: app-release.aab
         path: build/app/outputs/bundle/release/app-release.aab
