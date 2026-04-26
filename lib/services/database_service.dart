@@ -227,6 +227,35 @@ class DatabaseService {
     );
   }
 
+  // User Profile Operations
+  Future<int> insertProfile(UserProfile profile) async {
+    final db = await database;
+    return await db.insert('user_profiles', profile.toMap());
+  }
+
+  Future<UserProfile?> getActiveProfile() async {
+    final db = await database;
+    final maps = await db.query(
+      'user_profiles',
+      where: 'is_active = 1',
+      limit: 1,
+    );
+    if (maps.isNotEmpty) {
+      return UserProfile.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<int> updateProfile(UserProfile profile) async {
+    final db = await database;
+    return await db.update(
+      'user_profiles',
+      profile.toMap(),
+      where: 'id = ?',
+      whereArgs: [profile.id],
+    );
+  }
+
   // Audit Log Operations
   Future<void> logSecurityEvent(
     String eventType,

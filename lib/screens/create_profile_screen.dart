@@ -21,11 +21,12 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
-    _departmentController = TextEditingController();
-    _phoneController = TextEditingController();
-    _emailController = TextEditingController();
-    _addressController = TextEditingController();
+    final profile = context.read<AWBProvider>().userProfile;
+    _nameController = TextEditingController(text: profile?.name);
+    _departmentController = TextEditingController(text: profile?.department);
+    _phoneController = TextEditingController(text: profile?.phone);
+    _emailController = TextEditingController(text: profile?.email);
+    _addressController = TextEditingController(text: profile?.address);
   }
 
   @override
@@ -38,7 +39,7 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
     super.dispose();
   }
 
-  void _createProfile() {
+  Future<void> _createProfile() async {
     if (_formKey.currentState!.validate()) {
       final profile = UserProfile(
         name: _nameController.text,
@@ -46,268 +47,148 @@ class _CreateProfileScreenState extends State<CreateProfileScreen> {
         phone: _phoneController.text,
         email: _emailController.text,
         address: _addressController.text,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
 
-      context.read<AWBProvider>().createProfile(profile);
+      final success = await context.read<AWBProvider>().createProfile(profile);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile created successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      Navigator.of(context).pop();
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: Colors.greenAccent,
+          ),
+        );
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Profile'),
-        elevation: 0,
-        backgroundColor: const Color(0xFF001F3F),
+        title: const Text('USER PROFILE'),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF001F3F).withOpacity(0.95),
-              const Color(0xFF003D7A).withOpacity(0.95),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Illustration/Icon
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.account_circle_rounded, size: 80, color: colorScheme.primary),
+                ),
+              ),
+              const SizedBox(height: 32),
+              
+              _buildSectionHeader(context, 'PERSONAL DETAILS', Icons.badge_outlined),
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: _nameController,
+                label: 'Full Name',
+                icon: Icons.person_outline_rounded,
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: _departmentController,
+                label: 'Department',
+                icon: Icons.business_outlined,
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 32),
+
+              _buildSectionHeader(context, 'CONTACT INFORMATION', Icons.contact_mail_outlined),
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: _phoneController,
+                label: 'Phone Number',
+                icon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: _emailController,
+                label: 'Email Address',
+                icon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v!.isEmpty) return 'Required';
+                  if (!v.contains('@')) return 'Invalid email';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: _addressController,
+                label: 'Office/Home Address',
+                icon: Icons.location_on_outlined,
+                maxLines: 3,
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 48),
+
+              ElevatedButton(
+                onPressed: _createProfile,
+                child: const Text('SAVE PROFILE'),
+              ),
+              const SizedBox(height: 40),
             ],
           ),
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00D9FF).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF00D9FF).withOpacity(0.3),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Create Your Profile',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Set up your profile for secure handover transactions',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
+      ),
+    );
+  }
 
-                // Name Field
-                _buildTextField(
-                  controller: _nameController,
-                  label: 'Full Name',
-                  hint: 'e.g., Ahmad Bin Abdullah',
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Name is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Department Field
-                _buildTextField(
-                  controller: _departmentController,
-                  label: 'Department',
-                  hint: 'e.g., Logistics Department',
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Department is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Phone Field
-                _buildTextField(
-                  controller: _phoneController,
-                  label: 'Phone Number',
-                  hint: 'e.g., +6012-3456789',
-                  keyboardType: TextInputType.phone,
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Phone number is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Email Field
-                _buildTextField(
-                  controller: _emailController,
-                  label: 'Email Address',
-                  hint: 'e.g., ahmad@company.com',
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Email is required';
-                    }
-                    if (!value!.contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Address Field
-                _buildTextField(
-                  controller: _addressController,
-                  label: 'Address',
-                  hint: 'e.g., Level 5, Tower A, Technology Park',
-                  maxLines: 3,
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Address is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 32),
-
-                // Create Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _createProfile,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00D9FF),
-                      foregroundColor: const Color(0xFF001F3F),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 8,
-                    ),
-                    child: const Text(
-                      'Create Profile',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+            letterSpacing: 1.5,
           ),
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
-    required String hint,
+    required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          validator: validator,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(color: Colors.white54),
-            filled: true,
-            fillColor: Colors.white.withOpacity(0.1),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: const Color(0xFF00D9FF).withOpacity(0.3),
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: const Color(0xFF00D9FF).withOpacity(0.3),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(
-                color: Color(0xFF00D9FF),
-                width: 2,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(
-                color: Colors.red,
-              ),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-          ),
-        ),
-      ],
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      validator: validator,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, size: 20),
+        alignLabelWithHint: maxLines > 1,
+      ),
     );
   }
-}
-
-class UserProfile {
-  final String name;
-  final String department;
-  final String phone;
-  final String email;
-  final String address;
-
-  UserProfile({
-    required this.name,
-    required this.department,
-    required this.phone,
-    required this.email,
-    required this.address,
-  });
 }

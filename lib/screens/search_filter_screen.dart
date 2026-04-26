@@ -27,30 +27,38 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Search & Filter'),
+        title: const Text('SEARCH & REPORTS'),
       ),
       body: Consumer<AWBProvider>(
         builder: (context, provider, child) {
           return Column(
             children: [
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.all(16),
+              // Search & Actions Header
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
+                ),
                 child: Column(
                   children: [
                     TextField(
                       controller: _searchController,
+                      onChanged: (v) {
+                        setState(() {});
+                        provider.searchAWBs(v);
+                      },
                       decoration: InputDecoration(
-                        hintText: 'Search by AWB ID, sender, recipient...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        hintText: 'Search AWB, Sender, Recipient...',
+                        prefixIcon: const Icon(Icons.search_rounded),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear),
+                                icon: const Icon(Icons.close_rounded),
                                 onPressed: () {
                                   _searchController.clear();
                                   provider.searchAWBs('');
@@ -59,28 +67,29 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
                               )
                             : null,
                       ),
-                      onChanged: (value) {
-                        setState(() {});
-                        provider.searchAWBs(value);
-                      },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              setState(() => _showFilters = !_showFilters);
-                            },
-                            icon: const Icon(Icons.filter_list),
-                            label: const Text('Filters'),
+                          child: OutlinedButton.icon(
+                            onPressed: () => setState(() => _showFilters = !_showFilters),
+                            icon: Icon(_showFilters ? Icons.close_rounded : Icons.tune_rounded, size: 18),
+                            label: Text(_showFilters ? 'CLOSE FILTERS' : 'ADVANCED FILTERS'),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: _showFilters ? Colors.redAccent.withOpacity(0.5) : colorScheme.primary.withOpacity(0.3)),
+                              foregroundColor: _showFilters ? Colors.redAccent : colorScheme.primary,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: _generateReport,
-                          icon: const Icon(Icons.file_download),
-                          label: const Text('PDF'),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 120,
+                          child: ElevatedButton.icon(
+                            onPressed: _generateReport,
+                            icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                            label: const Text('REPORT'),
+                          ),
                         ),
                       ],
                     ),
@@ -88,152 +97,190 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
                 ),
               ),
 
-              // Filters
+              // Filter Panel
               if (_showFilters)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Status Filter
-                      Text(
-                        'Status',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButton<String>(
-                        isExpanded: true,
-                        value: _selectedStatus,
-                        hint: const Text('All Status'),
-                        items: const [
-                          DropdownMenuItem(value: 'created', child: Text('Created')),
-                          DropdownMenuItem(value: 'scanned', child: Text('Scanned')),
-                          DropdownMenuItem(value: 'completed', child: Text('Completed')),
-                          DropdownMenuItem(value: 'expired', child: Text('Expired')),
-                        ],
-                        onChanged: (value) {
-                          setState(() => _selectedStatus = value);
-                          _applyFilters(context);
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                _buildFilterPanel(context),
 
-                      // Type Filter
-                      Text(
-                        'Type',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButton<String>(
-                        isExpanded: true,
-                        value: _selectedType,
-                        hint: const Text('All Types'),
-                        items: const [
-                          DropdownMenuItem(value: 'A6', child: Text('A6')),
-                          DropdownMenuItem(value: '80mm', child: Text('80mm')),
-                          DropdownMenuItem(value: '58mm', child: Text('58mm')),
-                        ],
-                        onChanged: (value) {
-                          setState(() => _selectedType = value);
-                          _applyFilters(context);
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Date Range
-                      Text(
-                        'Date Range',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => _selectDate(context, true),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  _startDate != null
-                                      ? DateFormat('yyyy-MM-dd').format(_startDate!)
-                                      : 'Start Date',
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => _selectDate(context, false),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  _endDate != null
-                                      ? DateFormat('yyyy-MM-dd').format(_endDate!)
-                                      : 'End Date',
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () => _applyFilters(context),
-                          child: const Text('Apply Filters'),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
-                ),
-
-              // Results
+              // Results List
               Expanded(
                 child: provider.filteredAWBs.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No AWBs found',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      )
+                    ? _buildEmptyResults(context)
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.all(20),
                         itemCount: provider.filteredAWBs.length,
                         itemBuilder: (context, index) {
                           final awb = provider.filteredAWBs[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              title: Text(awb.airwayId),
-                              subtitle: Text(
-                                '${awb.senderName} → ${awb.recipientName}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: Chip(
-                                label: Text(awb.status),
-                                backgroundColor: _getStatusColor(awb.status),
-                              ),
-                              onTap: () => _showAWBDetails(context, awb),
-                            ),
-                          );
+                          return _buildAWBCard(context, awb);
                         },
                       ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildFilterPanel(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildDropdownFilter(
+                  label: 'Status',
+                  value: _selectedStatus,
+                  items: ['created', 'scanned', 'completed', 'expired'],
+                  onChanged: (v) {
+                    setState(() => _selectedStatus = v);
+                    _applyFilters(context);
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildDropdownFilter(
+                  label: 'Type',
+                  value: _selectedType,
+                  items: ['A6', '80mm', '58mm'],
+                  onChanged: (v) {
+                    setState(() => _selectedType = v);
+                    _applyFilters(context);
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: _buildDatePicker(context, true)),
+              const SizedBox(width: 16),
+              Expanded(child: _buildDatePicker(context, false)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedStatus = null;
+                  _selectedType = null;
+                  _startDate = null;
+                  _endDate = null;
+                });
+                _applyFilters(context);
+              },
+              child: const Text('RESET ALL FILTERS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdownFilter({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required Function(String?) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.white38, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        DropdownButton<String>(
+          isExpanded: true,
+          value: value,
+          underline: Container(height: 1, color: Colors.white10),
+          hint: const Text('All', style: TextStyle(fontSize: 12)),
+          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e.toUpperCase(), style: const TextStyle(fontSize: 12)))).toList(),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDatePicker(BuildContext context, bool isStart) {
+    final date = isStart ? _startDate : _endDate;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(isStart ? 'START DATE' : 'END DATE', style: const TextStyle(fontSize: 10, color: Colors.white38, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () => _selectDate(context, isStart),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10))),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  date != null ? DateFormat('dd/MM/yy').format(date) : '--/--/--',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const Icon(Icons.calendar_today_rounded, size: 14, color: Colors.white24),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAWBCard(BuildContext context, dynamic awb) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF00D9FF)),
+        ),
+        title: Text(awb.airwayId, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        subtitle: Text('${awb.senderName} → ${awb.recipientName}', style: const TextStyle(fontSize: 12, color: Colors.white54)),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: _getStatusColor(awb.status).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _getStatusColor(awb.status).withOpacity(0.3)),
+          ),
+          child: Text(
+            awb.status.toUpperCase(),
+            style: TextStyle(color: _getStatusColor(awb.status), fontSize: 10, fontWeight: FontWeight.bold),
+          ),
+        ),
+        onTap: () => _showAWBDetails(context, awb),
+      ),
+    );
+  }
+
+  Widget _buildEmptyResults(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off_rounded, size: 64, color: Colors.white.withOpacity(0.05)),
+          const SizedBox(height: 16),
+          const Text('No records found matching criteria', style: TextStyle(color: Colors.white24)),
+        ],
       ),
     );
   }
@@ -247,118 +294,101 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
     );
   }
 
-  Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+  Future<void> _selectDate(BuildContext context, bool isStart) async {
     final picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
+      firstDate: DateTime(2023),
       lastDate: DateTime.now(),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(primary: const Color(0xFF00D9FF)),
+        ),
+        child: child!,
+      ),
     );
-
     if (picked != null) {
       setState(() {
-        if (isStartDate) {
-          _startDate = picked;
-        } else {
-          _endDate = picked;
-        }
+        if (isStart) _startDate = picked;
+        else _endDate = picked;
       });
+      _applyFilters(context);
     }
   }
 
   Future<void> _generateReport() async {
     final provider = context.read<AWBProvider>();
-    
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Generating PDF report...')),
-      );
-
-      final filePath = await PDFService.generateAWBReport(
-        provider.filteredAWBs,
-        'PANTAS AWB Report',
-      );
-
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Compiling secure report...')));
+      final path = await PDFService.generateAWBReport(provider.filteredAWBs, 'PANTAS_REPORT_${DateTime.now().millisecondsSinceEpoch}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Report saved: $filePath'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Report generated: $path'), backgroundColor: Colors.greenAccent));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e'), backgroundColor: Colors.redAccent));
       }
     }
   }
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'created':
-        return Colors.blue;
-      case 'scanned':
-        return Colors.orange;
-      case 'completed':
-        return Colors.green;
-      case 'expired':
-        return Colors.red;
-      default:
-        return Colors.grey;
+      case 'created': return const Color(0xFF00D9FF);
+      case 'scanned': return Colors.orangeAccent;
+      case 'completed': return Colors.greenAccent;
+      case 'expired': return Colors.redAccent;
+      default: return Colors.grey;
     }
   }
 
   void _showAWBDetails(BuildContext context, dynamic awb) {
-    showDialog(
+    // Reusing the same detail view logic as HomeScreen or navigating to a dedicated detail screen
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('AWB: ${awb.airwayId}'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDetailRow('Type', awb.type),
-              _buildDetailRow('Sender', awb.senderName),
-              _buildDetailRow('Recipient', awb.recipientName),
-              _buildDetailRow('Status', awb.status),
-              _buildDetailRow('Created', awb.createdAt.toString().split('.')[0]),
-              _buildDetailRow('Expires', awb.expiresAt.toString().split('.')[0]),
-            ],
-          ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('TRANSACTION DETAILS', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+            const SizedBox(height: 8),
+            Text(awb.airwayId, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF00D9FF))),
+            const Divider(height: 40, color: Colors.white10),
+            Expanded(
+              child: ListView(
+                children: [
+                  _buildDetailItem('Status', awb.status.toUpperCase()),
+                  _buildDetailItem('Sender', awb.senderName),
+                  _buildDetailItem('Recipient', awb.recipientName),
+                  _buildDetailItem('Type', awb.type),
+                  _buildDetailItem('Created', awb.createdAt.toString()),
+                  _buildDetailItem('Expires', awb.expiresAt.toString()),
+                ],
+              ),
+            ),
+            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('CLOSE'))),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailItem(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(value),
-          ),
+          Text(label, style: const TextStyle(fontSize: 10, color: Colors.white38, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 14)),
         ],
       ),
     );

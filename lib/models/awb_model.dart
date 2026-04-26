@@ -84,3 +84,53 @@ class AWB {
   bool get isExpired => DateTime.now().isAfter(expiresAt);
   bool get canExtendValidity => validityExtensionCount < 2;
 }
+
+class UserProfile {
+  final int? id;
+  final String name;
+  final String department;
+  final String phone;
+  final String email;
+  final String address;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  UserProfile({
+    this.id,
+    required this.name,
+    required this.department,
+    required this.phone,
+    required this.email,
+    required this.address,
+    this.isActive = true,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'profile_name': name,
+      'department': department,
+      'phone': phone,
+      'address': address,
+      'is_active': isActive ? 1 : 0,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory UserProfile.fromMap(Map<String, dynamic> map) {
+    return UserProfile(
+      id: map['id'] as int?,
+      name: map['profile_name'] as String,
+      department: map['department'] as String,
+      phone: map['phone'] as String,
+      address: map['address'] as String,
+      isActive: (map['is_active'] as int? ?? 1) == 1,
+      createdAt: DateTime.parse(map['created_at'] as String),
+      updatedAt: DateTime.parse(map['updated_at'] as String),
+    );
+  }
+}

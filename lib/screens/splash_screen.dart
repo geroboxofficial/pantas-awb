@@ -48,13 +48,11 @@ class _SplashScreenState extends State<SplashScreen>
     final provider = context.read<AWBProvider>();
     await provider.initialize();
     
-    // For now, we'll assume if no AWBs and no profile, go to profile creation
-    // In a real app, we'd check the user_profiles table
-    // Since I can't easily check the DB here without more code, 
-    // I'll navigate to a 'Welcome' screen or Home which then decides.
-    // Based on the prompt, FASA 1 is Create Profile.
-    
-    Navigator.of(context).pushReplacementNamed('/home');
+    if (provider.userProfile == null) {
+      Navigator.of(context).pushReplacementNamed('/profile');
+    } else {
+      Navigator.of(context).pushReplacementNamed('/home');
+    }
   }
 
   @override

@@ -15,6 +15,7 @@ class AWBProvider extends ChangeNotifier {
   };
   bool _isLoading = false;
   String? _error;
+  UserProfile? _userProfile;
 
   // Getters
   List<AWB> get awbs => _awbs;
@@ -22,6 +23,7 @@ class AWBProvider extends ChangeNotifier {
   Map<String, int> get statistics => _statistics;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  UserProfile? get userProfile => _userProfile;
 
   // Initialize
   Future<void> initialize() async {
@@ -31,6 +33,7 @@ class AWBProvider extends ChangeNotifier {
     try {
       await loadAWBs();
       await loadStatistics();
+      await loadUserProfile();
       _error = null;
     } catch (e) {
       _error = 'Failed to initialize: $e';
@@ -38,6 +41,44 @@ class AWBProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  // Load User Profile
+  Future<void> loadUserProfile() async {
+    try {
+      _userProfile = await _dbService.getActiveProfile();
+      notifyListeners();
+    } catch (e) {
+      _error = 'Failed to load profile: $e';
+      notifyListeners();
+    }
+  }
+
+  // Create Profile
+  Future<bool> createProfile(UserProfile profile) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      await _dbService.insertProfile(profile);
+      _userProfile = profile;
+      
+      await _dbService.logSecurityEvent(
+        'PROFILE_CREATED',
+        'User profile created for ${profile.name}',
+        'info',
+      );
+
+      _error = null;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Failed to create profile: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   // Load all AWBs

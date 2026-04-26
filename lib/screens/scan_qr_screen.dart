@@ -23,16 +23,28 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Scan QR Code'),
+        title: const Text('SECURE SCANNER'),
+        backgroundColor: Colors.black,
         actions: [
           IconButton(
-            icon: const Icon(Icons.flash_off),
+            icon: ValueListenableBuilder(
+              valueListenable: cameraController.torchState,
+              builder: (context, state, child) {
+                switch (state as TorchState) {
+                  case TorchState.off: return const Icon(Icons.flash_off_rounded, color: Colors.white54);
+                  case TorchState.on: return const Icon(Icons.flash_on_rounded, color: Color(0xFF00D9FF));
+                }
+              },
+            ),
             onPressed: () => cameraController.toggleTorch(),
           ),
           IconButton(
-            icon: const Icon(Icons.camera_rear),
+            icon: const Icon(Icons.flip_camera_ios_rounded, color: Colors.white54),
             onPressed: () => cameraController.switchCamera(),
           ),
         ],
@@ -43,46 +55,101 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
             controller: cameraController,
             onDetect: _handleDetection,
           ),
-          // Overlay
+          // Futuristic Overlay
           Positioned.fill(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 250,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.green,
-                      width: 3,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black.withOpacity(0.5), width: 40),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Spacer(),
+                  Container(
+                    width: 240,
+                    height: 240,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFF00D9FF).withOpacity(0.5), width: 2),
+                      borderRadius: BorderRadius.circular(24),
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    child: Stack(
+                      children: [
+                        _buildCorner(0, 0, top: true, left: true),
+                        _buildCorner(null, 0, top: true, right: true),
+                        _buildCorner(0, null, bottom: true, left: true),
+                        _buildCorner(null, null, bottom: true, right: true),
+                        Center(
+                          child: Container(
+                            width: 200,
+                            height: 1,
+                            color: const Color(0xFF00D9FF).withOpacity(0.2),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 32),
-                const Text(
-                  'Position QR code within frame',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 40),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: const Text(
+                      'ALIGN QR CODE WITHIN FRAME',
+                      style: TextStyle(color: Color(0xFF00D9FF), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                    ),
                   ),
-                ),
-              ],
+                  const Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 40),
+                    child: Text(
+                      'ENCRYPTED HANDOVER PROTOCOL v1.0',
+                      style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 8, letterSpacing: 2),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+          if (_isProcessing)
+            Container(
+              color: Colors.black54,
+              child: const Center(child: CircularProgressIndicator(color: Color(0xFF00D9FF))),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCorner(double? left, double? right, {bool top = false, bool bottom = false, bool left_ = false, bool right_ = false}) {
+    return Positioned(
+      top: top ? 0 : null,
+      bottom: bottom ? 0 : null,
+      left: left,
+      right: right,
+      child: Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          border: Border(
+            top: top ? const BorderSide(color: Color(0xFF00D9FF), width: 4) : BorderSide.none,
+            bottom: bottom ? const BorderSide(color: Color(0xFF00D9FF), width: 4) : BorderSide.none,
+            left: left != null ? const BorderSide(color: Color(0xFF00D9FF), width: 4) : BorderSide.none,
+            right: right != null ? const BorderSide(color: Color(0xFF00D9FF), width: 4) : BorderSide.none,
+          ),
+        ),
       ),
     );
   }
 
   void _handleDetection(BarcodeCapture capture) {
     if (_isProcessing) return;
-
     final List<Barcode> barcodes = capture.barcodes;
     for (final barcode in barcodes) {
       if (barcode.rawValue != null) {
-        _isProcessing = true;
+        setState(() => _isProcessing = true);
         _processQRCode(barcode.rawValue!);
         break;
       }
@@ -91,157 +158,121 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
 
   Future<void> _processQRCode(String qrContent) async {
     try {
-      // Verify QR signature
       final result = QRSecurityService.verifyAndExtractQRData(qrContent);
-
       if (!result['valid']) {
-        if (mounted) {
-          _showErrorDialog(result['error'] ?? 'Invalid QR code');
-        }
-        _isProcessing = false;
+        _showStatusSheet(false, result['error'] ?? 'Invalid Security Signature');
         return;
       }
 
       final data = result['data'] as Map<String, dynamic>;
       final airwayId = data['airwayId'] as String?;
-
-      if (airwayId == null) {
-        if (mounted) {
-          _showErrorDialog('Invalid AWB ID in QR code');
-        }
-        _isProcessing = false;
-        return;
-      }
-
-      // Get AWB from database
       final provider = context.read<AWBProvider>();
-      final awb = await provider.awbs.isEmpty
-          ? null
-          : provider.awbs
-              .where((a) => a.airwayId == airwayId)
-              .firstOrNull;
-
+      
+      // Look for AWB in provider
+      final awb = provider.awbs.where((a) => a.airwayId == airwayId).firstOrNull;
+      
       if (awb == null) {
-        if (mounted) {
-          _showErrorDialog('AWB not found: $airwayId');
-        }
-        _isProcessing = false;
+        _showStatusSheet(false, 'Consignment record not found in local database');
         return;
       }
 
-      // Show handover confirmation
-      if (mounted) {
-        _showHandoverDialog(awb);
-      }
+      _showHandoverSheet(awb);
     } catch (e) {
-      if (mounted) {
-        _showErrorDialog('Error: $e');
-      }
+      _showStatusSheet(false, 'System Error: $e');
     } finally {
-      _isProcessing = false;
+      setState(() => _isProcessing = false);
     }
   }
 
-  void _showErrorDialog(String message) {
-    showDialog(
+  void _showStatusSheet(bool success, String message) {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('QR Code Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(32),
+        decoration: const BoxDecoration(
+          color: Color(0xFF001F3F),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(success ? Icons.check_circle_rounded : Icons.error_rounded, size: 64, color: success ? Colors.greenAccent : Colors.redAccent),
+            const SizedBox(height: 24),
+            Text(success ? 'VERIFIED' : 'ERROR', style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2)),
+            const SizedBox(height: 8),
+            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54)),
+            const SizedBox(height: 32),
+            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('DISMISS'))),
+          ],
+        ),
       ),
     );
   }
 
-  void _showHandoverDialog(dynamic awb) {
-    showDialog(
+  void _showHandoverSheet(dynamic awb) {
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Handover'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('AWB Details:'),
-              const SizedBox(height: 12),
-              _buildDetailRow('AWB ID', awb.airwayId),
-              _buildDetailRow('Sender', awb.senderName),
-              _buildDetailRow('Recipient', awb.recipientName),
-              _buildDetailRow('Status', awb.status),
-              const SizedBox(height: 16),
-              const Text('Confirm handover to recipient?'),
-            ],
-          ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(32),
+        decoration: const BoxDecoration(
+          color: Color(0xFF001F3F),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              _completeHandover(awb);
-              Navigator.pop(context);
-            },
-            child: const Text('Confirm'),
-          ),
-        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('CONSIGNMENT VERIFIED', style: TextStyle(color: Color(0xFF00D9FF), fontWeight: FontWeight.bold, letterSpacing: 1)),
+            const SizedBox(height: 8),
+            Text(awb.airwayId, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+            const Divider(height: 40, color: Colors.white10),
+            _buildInfoRow('Sender', awb.senderName),
+            _buildInfoRow('Recipient', awb.recipientName),
+            _buildInfoRow('Current Status', awb.status.toUpperCase()),
+            const SizedBox(height: 32),
+            const Text('CONFIRM HANDOVER TRANSACTION?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL'))),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _completeHandover(awb);
+                      Navigator.pop(context);
+                    },
+                    child: const Text('CONFIRM'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
 
   Future<void> _completeHandover(dynamic awb) async {
-    try {
-      final provider = context.read<AWBProvider>();
-      
-      // Update status to scanned first
-      await provider.updateAWBStatus(awb.airwayId, 'scanned');
-
-      // Record handover timestamp
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Handover recorded successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    final provider = context.read<AWBProvider>();
+    final success = await provider.updateAWBStatus(awb.airwayId, 'completed');
+    if (mounted) {
+      _showStatusSheet(success, success ? 'Handover transaction completed and logged.' : 'Failed to update transaction status.');
     }
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(value),
-          ),
+          Text(label, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         ],
       ),
     );
