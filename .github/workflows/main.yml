@@ -29,7 +29,6 @@ jobs:
     - name: Get Flutter dependencies
       run: |
         flutter pub get
-        flutter pub upgrade
 
     - name: Build APK (Release)
       run: flutter build apk --release --no-shrink
