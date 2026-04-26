@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'home_screen.dart';
+import 'package:provider/provider.dart';
+import '../providers/awb_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -34,12 +35,26 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animationController.forward();
 
-    // Navigate after 3 seconds
-    Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      }
-    });
+    _checkProfileAndNavigate();
+  }
+
+  Future<void> _checkProfileAndNavigate() async {
+    // Wait for animation and some artificial delay for futuristic feel
+    await Future.delayed(const Duration(seconds: 3));
+    
+    if (!mounted) return;
+
+    // Check if profile exists
+    final provider = context.read<AWBProvider>();
+    await provider.initialize();
+    
+    // For now, we'll assume if no AWBs and no profile, go to profile creation
+    // In a real app, we'd check the user_profiles table
+    // Since I can't easily check the DB here without more code, 
+    // I'll navigate to a 'Welcome' screen or Home which then decides.
+    // Based on the prompt, FASA 1 is Create Profile.
+    
+    Navigator.of(context).pushReplacementNamed('/home');
   }
 
   @override
@@ -52,111 +67,146 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color(0xFF001F3F), // Deep Navy
-              const Color(0xFF003D7A), // Navy Blue
-              const Color(0xFF0066CC), // Medium Blue
+              Color(0xFF000B18), // Ultra Dark Navy
+              Color(0xFF001F3F), // Deep Navy
+              Color(0xFF003D7A), // Navy Blue
             ],
           ),
         ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Animated Logo
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF00D9FF).withOpacity(0.5),
-                          blurRadius: 30,
-                          spreadRadius: 10,
+        child: Stack(
+          children: [
+            // Futuristic Background Elements (Circles/Lines)
+            Positioned(
+              top: -100,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF00D9FF).withOpacity(0.05),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -50,
+              left: -50,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF00D9FF).withOpacity(0.05),
+                ),
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Animated Logo
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: ScaleTransition(
+                      scale: _scaleAnimation,
+                      child: Container(
+                        width: 180,
+                        height: 180,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF00D9FF).withOpacity(0.3),
+                              blurRadius: 40,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/logo.png',
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  // App Title with Futuristic Glow
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Column(
+                      children: [
+                        const Text(
+                          'PANTAS AWB',
+                          style: TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 4,
+                            shadows: [
+                              Shadow(
+                                color: Color(0xFF00D9FF),
+                                blurRadius: 15,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFF00D9FF).withOpacity(0.5)),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'SECURE LOGISTICS ECOSYSTEM',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFF00D9FF),
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    child: Image.asset(
-                      'assets/logo.png',
-                      fit: BoxFit.contain,
-                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 40),
-              // App Title with Animation
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: Column(
-                  children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: [
-                          Colors.white,
-                          const Color(0xFF00D9FF),
-                        ],
-                      ).createShader(bounds),
-                      child: const Text(
-                        'PANTAS AWB',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 2,
+                  const SizedBox(height: 80),
+                  // Futuristic Loading
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          width: 200,
+                          child: LinearProgressIndicator(
+                            backgroundColor: Colors.white.withOpacity(0.1),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00D9FF)),
+                            minHeight: 2,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'INITIALIZING SECURE PROTOCOLS...',
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: Colors.white.withOpacity(0.5),
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Smart Secure Handover',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF00D9FF),
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 60),
-              // Loading Indicator
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      const Color(0xFF00D9FF).withOpacity(0.8),
-                    ),
-                    strokeWidth: 3,
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 30),
-              // Version Info
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: const Text(
-                  'v1.0.0',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white54,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

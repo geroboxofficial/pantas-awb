@@ -6,6 +6,8 @@ import 'package:pantas_awb/screens/create_awb_screen.dart';
 import 'package:pantas_awb/screens/scan_qr_screen.dart';
 import 'package:pantas_awb/screens/search_filter_screen.dart';
 import 'package:pantas_awb/screens/settings_screen.dart';
+import 'package:pantas_awb/screens/splash_screen.dart';
+import 'package:pantas_awb/screens/create_profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,9 +38,10 @@ class MyApp extends StatelessWidget {
             centerTitle: false,
           ),
         ),
-        home: const HomeScreen(),
+        home: const SplashScreen(),
         routes: {
           '/home': (context) => const HomeScreen(),
+          '/profile': (context) => const CreateProfileScreen(),
           '/create': (context) => const CreateAWBScreen(),
           '/scan': (context) => const ScanQRScreen(),
           '/search': (context) => const SearchFilterScreen(),

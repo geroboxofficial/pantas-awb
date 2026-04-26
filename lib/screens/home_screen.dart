@@ -22,8 +22,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PANTAS AWB'),
+        title: Row(
+          children: [
+            Image.asset('assets/logo.png', height: 32),
+            const SizedBox(width: 12),
+            const Text('PANTAS AWB', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+          ],
+        ),
         elevation: 0,
+        backgroundColor: const Color(0xFF001F3F),
+        foregroundColor: Colors.white,
       ),
       body: Consumer<AWBProvider>(
         builder: (context, provider, child) {
@@ -46,31 +54,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     _buildActionButton(
                       context,
-                      icon: Icons.add_circle_outline,
-                      label: 'Create AWB',
-                      color: Colors.blue,
+                      icon: Icons.person_add_alt_1,
+                      label: 'FASA 1: Profile',
+                      color: const Color(0xFF00D9FF),
+                      onTap: () => Navigator.pushNamed(context, '/profile'),
+                    ),
+                    _buildActionButton(
+                      context,
+                      icon: Icons.note_add_outlined,
+                      label: 'FASA 2: Create AWB',
+                      color: Colors.blueAccent,
                       onTap: () => Navigator.pushNamed(context, '/create'),
                     ),
                     _buildActionButton(
                       context,
                       icon: Icons.qr_code_scanner,
-                      label: 'Scan QR',
-                      color: Colors.purple,
+                      label: 'FASA 3/4: Scan',
+                      color: Colors.purpleAccent,
                       onTap: () => Navigator.pushNamed(context, '/scan'),
                     ),
                     _buildActionButton(
                       context,
-                      icon: Icons.search,
-                      label: 'Search & Filter',
-                      color: Colors.green,
+                      icon: Icons.assessment_outlined,
+                      label: 'FASA 5: Report',
+                      color: Colors.greenAccent,
                       onTap: () => Navigator.pushNamed(context, '/search'),
-                    ),
-                    _buildActionButton(
-                      context,
-                      icon: Icons.settings,
-                      label: 'Settings',
-                      color: Colors.grey.shade600,
-                      onTap: () => Navigator.pushNamed(context, '/settings'),
                     ),
                   ],
                 ),
