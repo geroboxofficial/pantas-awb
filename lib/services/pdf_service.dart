@@ -94,7 +94,7 @@ class PDFService {
                     decoration: pw.BoxDecoration(
                       border: pw.Border.all(width: 1),
                     ),
-                    child: pw.Image(qrImage),
+                    child: pw.Image(pw.MemoryImage(qrImage)),
                   ),
                 ],
               ),
@@ -290,7 +290,7 @@ class PDFService {
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(width: 1),
                 ),
-                child: pw.Image(qrImage),
+                child: pw.Image(pw.MemoryImage(qrImage)),
               ),
               pw.SizedBox(height: 4),
               pw.Text(
@@ -522,7 +522,7 @@ class PDFService {
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(width: 1),
                 ),
-                child: pw.Image(qrImage),
+                child: pw.Image(pw.MemoryImage(qrImage)),
               ),
               pw.SizedBox(height: 2),
               pw.Text(
