@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  # Target Node.js 24 for all actions as requested
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,16 +23,17 @@ jobs:
       with:
         distribution: 'oracle'
         java-version: '21'
+        cache: 'gradle'
 
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.24.0'
         channel: 'stable'
+        cache: true
 
     - name: Get Flutter dependencies
-      run: |
-        flutter pub get
+      run: flutter pub get
 
     - name: Build APK (Release)
       run: flutter build apk --release --no-shrink
@@ -41,6 +46,7 @@ jobs:
       with:
         name: app-release.apk
         path: build/app/outputs/apk/release/app-release.apk
+        if-no-files-found: error
         retention-days: 90
 
     - name: Upload AAB to Artifacts
@@ -48,4 +54,5 @@ jobs:
       with:
         name: app-release.aab
         path: build/app/outputs/bundle/release/app-release.aab
+        if-no-files-found: error
         retention-days: 90
