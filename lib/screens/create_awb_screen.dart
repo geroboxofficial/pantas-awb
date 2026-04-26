@@ -173,7 +173,7 @@ class _CreateAWBScreenState extends State<CreateAWBScreen> {
                       child: Text(
                         provider.error!,
                         style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-                        textAlign: Center,
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   const SizedBox(height: 40),

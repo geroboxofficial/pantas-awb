@@ -33,11 +33,15 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
         actions: [
           IconButton(
             icon: ValueListenableBuilder(
-              valueListenable: cameraController.torchState,
+              valueListenable: cameraController,
               builder: (context, state, child) {
-                switch (state as TorchState) {
-                  case TorchState.off: return const Icon(Icons.flash_off_rounded, color: Colors.white54);
-                  case TorchState.on: return const Icon(Icons.flash_on_rounded, color: Color(0xFF00D9FF));
+                switch (state.torchState) {
+                  case TorchState.off:
+                    return const Icon(Icons.flash_off_rounded, color: Colors.white54);
+                  case TorchState.on:
+                    return const Icon(Icons.flash_on_rounded, color: Color(0xFF00D9FF));
+                  default:
+                    return const Icon(Icons.flash_off_rounded, color: Colors.white54);
                 }
               },
             ),
@@ -74,10 +78,10 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
                     ),
                     child: Stack(
                       children: [
-                        _buildCorner(0, 0, top: true, left: true),
-                        _buildCorner(null, 0, top: true, right: true),
-                        _buildCorner(0, null, bottom: true, left: true),
-                        _buildCorner(null, null, bottom: true, right: true),
+                        _buildCorner(0, null, top: true, isLeft: true),
+                        _buildCorner(null, 0, top: true, isRight: true),
+                        _buildCorner(0, null, bottom: true, isLeft: true),
+                        _buildCorner(null, 0, bottom: true, isRight: true),
                         Center(
                           child: Container(
                             width: 200,
@@ -123,7 +127,7 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
     );
   }
 
-  Widget _buildCorner(double? left, double? right, {bool top = false, bool bottom = false, bool left_ = false, bool right_ = false}) {
+  Widget _buildCorner(double? left, double? right, {bool top = false, bool bottom = false, bool isLeft = false, bool isRight = false}) {
     return Positioned(
       top: top ? 0 : null,
       bottom: bottom ? 0 : null,
@@ -136,8 +140,8 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
           border: Border(
             top: top ? const BorderSide(color: Color(0xFF00D9FF), width: 4) : BorderSide.none,
             bottom: bottom ? const BorderSide(color: Color(0xFF00D9FF), width: 4) : BorderSide.none,
-            left: left != null ? const BorderSide(color: Color(0xFF00D9FF), width: 4) : BorderSide.none,
-            right: right != null ? const BorderSide(color: Color(0xFF00D9FF), width: 4) : BorderSide.none,
+            left: isLeft ? const BorderSide(color: Color(0xFF00D9FF), width: 4) : BorderSide.none,
+            right: isRight ? const BorderSide(color: Color(0xFF00D9FF), width: 4) : BorderSide.none,
           ),
         ),
       ),

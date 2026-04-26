@@ -127,6 +127,7 @@ class UserProfile {
       name: map['profile_name'] as String,
       department: map['department'] as String,
       phone: map['phone'] as String,
+      email: map['email'] as String? ?? '',
       address: map['address'] as String,
       isActive: (map['is_active'] as int? ?? 1) == 1,
       createdAt: DateTime.parse(map['created_at'] as String),
